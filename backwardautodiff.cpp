@@ -11,7 +11,7 @@ class Var;
 void addoverload(Var *);
 void subtractoverload(Var *);
 void multiplyoverload(Var *);
-void divideoverload(Var *);
+void divideoverload(Var * );
 void sinoverload(Var *);
 void cosoverload(Var *);
 void sqrtoverload(Var *);
@@ -50,7 +50,7 @@ class Var
             result = ch + result;
             numcpy /= 26;
         }
-        std::cout << result << std::endl;
+        // std::cout << result << std::endl;
         return result;
     }
 
@@ -122,6 +122,40 @@ public:
         newvar.backop = divideoverload;
         return newvar;
     }
+
+    Var& operator-() const 
+    {
+        Var& newvar = create(-this->value);
+        newvar.leftparent = const_cast<Var *>(this);
+        newvar.backop = negateoverload;
+        return newvar;
+    }
+
+
+    //var op constant
+    Var& operator+(double constant) const
+    {
+        Var& constvar = Var::create(constant, 0.0, false);
+        return *this + constvar;
+    }
+
+    Var& operator-(double constant) const 
+    {
+        Var& constvar = Var::create(constant, 0.0, false);
+        return *this - constvar;
+    }
+
+    Var& operator*(double constant) const 
+    {
+        Var& constvar = Var::create(constant, 0.0, false);
+        return *this * constvar;
+    }
+
+    Var& operator/(double constant) const 
+    {
+        Var& constvar = Var::create(constant, 0.0, false);
+        return *this / constvar;
+    }
 };
 int Var::varcount = 0;
 
@@ -187,7 +221,6 @@ c = a/b
 dz/da += dz/dc * dc/da
 dz/da += grad / b
 dz/db -= grad * a / b^2
-
 */
 void divideoverload(Var *var)
 {
@@ -201,38 +234,124 @@ void divideoverload(Var *var)
     }
 }
 
-void sinoverload(Var *) {
+void negateoverload(Var* var) 
+{
+    if (var->leftparent->requiresgrad)
+        var->leftparent->grad -= var->grad;
+}
 
-};
 
-void cosoverload(Var *) {
+Var& sin(Var& var) 
+{
+    Var& newvar = Var::create(std::sin(var.value));
+    newvar.leftparent = &var;
+    newvar.backop = sinoverload;
+    return newvar;
+}
 
-};
+Var& cos(Var& var) 
+{
+    Var& newvar = Var::create(std::cos(var.value));
+    newvar.leftparent = &var;
+    newvar.backop = cosoverload;
+    return newvar;
+}
 
-void sqrtoverload(Var *) {
+Var& sqrt(Var& var) 
+{
+    Var& newvar = Var::create(std::sqrt(var.value));
+    newvar.leftparent = &var;
+    newvar.backop = sqrtoverload;
+    return newvar;
+}
 
-};
+Var& exp(Var& var) 
+{
+    Var& newvar = Var::create(std::exp(var.value));
+    newvar.leftparent = &var;
+    newvar.backop = [](Var* v) {
+        if (v->leftparent->requiresgrad)
+            v->leftparent->grad += v->grad * std::exp(v->leftparent->value);
+    };
+    return newvar;
+}
 
-void logoverload(Var *) {
+Var& log(Var& var) 
+{
+    Var& newvar = Var::create(std::log(var.value));
+    newvar.leftparent = &var;
+    newvar.backop = logoverload;
+    return newvar;
+}
 
-};
 
-void negateoverload(Var *) {
+void sinoverload(Var *var)
+{
+    if (var->leftparent->requiresgrad)
+    {
+        var->leftparent->grad += var->grad * std::cos(var->leftparent->value);
+    }
+}
 
-};
+void cosoverload(Var *var)
+{
+    if (var->leftparent->requiresgrad)
+    {
+        var->leftparent->grad -= var->grad * std::sin(var->leftparent->value);
+    }
+}
+
+void sqrtoverload(Var *var)
+{
+    if (var->leftparent->requiresgrad)
+    {
+        var->leftparent->grad += var->grad * 0.5 / std::sqrt(var->leftparent->value);
+    }
+}
+
+void logoverload(Var *var)
+{
+    if (var->leftparent->requiresgrad)
+    {
+        var->leftparent->grad += var->grad / var->leftparent->value;
+    }
+}
 
 void nothing(Var *) {
 
 };
 
+
+//constant op Var
+Var& operator+(double constant, Var& var) {
+    Var& constvar = Var::create(constant, 0.0, false);
+    return constvar + var;
+}
+
+Var& operator-(double constant, Var& var) {
+    Var& constvar = Var::create(constant, 0.0, false);
+    return constvar - var;
+}
+
+Var& operator*(double constant, Var& var) {
+    Var& constvar = Var::create(constant, 0.0, false);
+    return constvar * var;
+}
+
+Var& operator/(double constant, Var& var) {
+    Var& constvar = Var::create(constant, 0.0, false);
+    return constvar / var;
+}
+
+
 int main()
 {
-    VAR a = Var::create(5.0);
-    VAR b = Var::create(6.0);
-    VAR c = a + b + b * a;
-    Var::calculategrad(&c);
-    std::cout << c.value << std::endl;
-    std::cout << c.grad << " " << a.grad << " " << b.grad << " " << std::endl;
+    VAR a = Var::create(2.0);
+    VAR b = Var::create(3.0);
+    VAR c = Var::create(1.0);
+    VAR f = sin(a * b + 2.0) + sqrt(c / 4.0);
+    Var::calculategrad(&f);
+    std::cout << f.grad << " " << a.grad << " " << b.grad << " " <<c.grad << std::endl;
 }
 
 
