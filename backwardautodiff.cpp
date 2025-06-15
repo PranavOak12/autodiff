@@ -613,3 +613,4 @@ int main()
 //     Var::calulategrad(&c);
 //     std::cout << a.grad << " " << b.grad << std::endl;
 // }
+// in this code when a * b is evaluated it gives us new variable say var1 now var1 is temp obj and c++ gurantees that var1 will be kept alive only till whole expression is evaluated now the problem is when whole expression is evaluated they are dangling pointers and we can not call them during bacop .
